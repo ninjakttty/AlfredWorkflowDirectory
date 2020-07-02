@@ -9,8 +9,6 @@
 
 """Lightweight HTTP library with a requests-like interface."""
 
-from __future__ import absolute_import, print_function
-
 import codecs
 import json
 import mimetypes
@@ -25,10 +23,8 @@ import urllib2
 import urlparse
 import zlib
 
-__version__ = open(os.path.join(os.path.dirname(__file__), 'version')).read()
 
-USER_AGENT = (u'Alfred-Workflow/' + __version__ +
-              ' (+http://www.deanishe.net/alfred-workflow)')
+USER_AGENT = u'Alfred-Workflow/1.19 (+http://www.deanishe.net/alfred-workflow)'
 
 # Valid characters for multipart form data boundaries
 BOUNDARY_CHARS = string.digits + string.ascii_letters
@@ -81,10 +77,8 @@ RESPONSES = {
 def str_dict(dic):
     """Convert keys and values in ``dic`` into UTF-8-encoded :class:`str`.
 
-    :param dic: Mapping of Unicode strings
-    :type dic: dict
-    :returns: Dictionary containing only UTF-8 strings
-    :rtype: dict
+    :param dic: :class:`dict` of Unicode strings
+    :returns: :class:`dict`
 
     """
     if isinstance(dic, CaseInsensitiveDictionary):
@@ -104,7 +98,6 @@ class NoRedirectHandler(urllib2.HTTPRedirectHandler):
     """Prevent redirections."""
 
     def redirect_request(self, *args):
-        """Ignore redirect."""
         return None
 
 
@@ -141,7 +134,6 @@ class CaseInsensitiveDictionary(dict):
         return dict.__setitem__(self, key.lower(), {'key': key, 'val': value})
 
     def get(self, key, default=None):
-        """Return value for case-insensitive key or default."""
         try:
             v = dict.__getitem__(self, key.lower())
         except KeyError:
@@ -150,48 +142,29 @@ class CaseInsensitiveDictionary(dict):
             return v['val']
 
     def update(self, other):
-        """Update values from other ``dict``."""
         for k, v in other.items():
             self[k] = v
 
     def items(self):
-        """Return ``(key, value)`` pairs."""
         return [(v['key'], v['val']) for v in dict.itervalues(self)]
 
     def keys(self):
-        """Return original keys."""
         return [v['key'] for v in dict.itervalues(self)]
 
     def values(self):
-        """Return all values."""
         return [v['val'] for v in dict.itervalues(self)]
 
     def iteritems(self):
-        """Iterate over ``(key, value)`` pairs."""
         for v in dict.itervalues(self):
             yield v['key'], v['val']
 
     def iterkeys(self):
-        """Iterate over original keys."""
         for v in dict.itervalues(self):
             yield v['key']
 
     def itervalues(self):
-        """Interate over values."""
         for v in dict.itervalues(self):
             yield v['val']
-
-
-class Request(urllib2.Request):
-    """Subclass of :class:`urllib2.Request` that supports custom methods."""
-
-    def __init__(self, *args, **kwargs):
-        """Create a new :class:`Request`."""
-        self._method = kwargs.pop('method', None)
-        urllib2.Request.__init__(self, *args, **kwargs)
-
-    def get_method(self):
-        return self._method.upper()
 
 
 class Response(object):
@@ -216,9 +189,9 @@ class Response(object):
     def __init__(self, request, stream=False):
         """Call `request` with :mod:`urllib2` and process results.
 
-        :param request: :class:`Request` instance
+        :param request: :class:`urllib2.Request` instance
         :param stream: Whether to stream response or retrieve it all at once
-        :type stream: bool
+        :type stream: ``bool``
 
         """
         self.request = request
@@ -265,8 +238,8 @@ class Response(object):
             # Transfer-Encoding appears to not be used in the wild
             # (contrary to the HTTP standard), but no harm in testing
             # for it
-            if 'gzip' in headers.get('content-encoding', '') or \
-                    'gzip' in headers.get('transfer-encoding', ''):
+            if ('gzip' in headers.get('content-encoding', '') or
+                    'gzip' in headers.get('transfer-encoding', '')):
                 self._gzipped = True
 
     @property
@@ -275,7 +248,6 @@ class Response(object):
 
         Returns:
             bool: `True` if response is streamed.
-
         """
         return self._stream
 
@@ -291,7 +263,7 @@ class Response(object):
         """Decode response contents as JSON.
 
         :returns: object decoded from JSON
-        :rtype: list, dict or unicode
+        :rtype: :class:`list` / :class:`dict`
 
         """
         return json.loads(self.content, self.encoding or 'utf-8')
@@ -300,8 +272,7 @@ class Response(object):
     def encoding(self):
         """Text encoding of document or ``None``.
 
-        :returns: Text encoding if found.
-        :rtype: str or ``None``
+        :returns: :class:`str` or ``None``
 
         """
         if not self._encoding:
@@ -314,7 +285,7 @@ class Response(object):
         """Raw content of response (i.e. bytes).
 
         :returns: Body of HTTP response
-        :rtype: str
+        :rtype: :class:`str`
 
         """
         if not self._content:
@@ -339,7 +310,7 @@ class Response(object):
         itself, the encoded response body will be returned instead.
 
         :returns: Body of HTTP response
-        :rtype: unicode or str
+        :rtype: :class:`unicode` or :class:`str`
 
         """
         if self.encoding:
@@ -353,9 +324,9 @@ class Response(object):
         .. versionadded:: 1.6
 
         :param chunk_size: Number of bytes to read into memory
-        :type chunk_size: int
+        :type chunk_size: ``int``
         :param decode_unicode: Decode to Unicode using detected encoding
-        :type decode_unicode: bool
+        :type decode_unicode: ``Boolean``
         :returns: iterator
 
         """
@@ -369,18 +340,20 @@ class Response(object):
                 "`content` has already been read from this Response.")
 
         def decode_stream(iterator, r):
-            dec = codecs.getincrementaldecoder(r.encoding)(errors='replace')
+
+            decoder = codecs.getincrementaldecoder(r.encoding)(errors='replace')
 
             for chunk in iterator:
-                data = dec.decode(chunk)
+                data = decoder.decode(chunk)
                 if data:
                     yield data
 
-            data = dec.decode(b'', final=True)
+            data = decoder.decode(b'', final=True)
             if data:  # pragma: no cover
                 yield data
 
         def generate():
+
             if self._gzipped:
                 decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
@@ -433,7 +406,7 @@ class Response(object):
         """Get encoding from HTTP headers or content.
 
         :returns: encoding or `None`
-        :rtype: unicode or ``None``
+        :rtype: ``unicode`` or ``None``
 
         """
         headers = self.raw.info()
@@ -451,15 +424,15 @@ class Response(object):
         if not self.stream:  # Try sniffing response content
             # Encoding declared in document should override HTTP headers
             if self.mimetype == 'text/html':  # sniff HTML headers
-                m = re.search(r"""<meta.+charset=["']{0,1}(.+?)["'].*>""",
+                m = re.search("""<meta.+charset=["']{0,1}(.+?)["'].*>""",
                               self.content)
                 if m:
                     encoding = m.group(1)
 
-            elif ((self.mimetype.startswith('application/')
-                   or self.mimetype.startswith('text/'))
-                  and 'xml' in self.mimetype):
-                m = re.search(r"""<?xml.+encoding=["'](.+?)["'][^>]*\?>""",
+            elif ((self.mimetype.startswith('application/') or
+                   self.mimetype.startswith('text/')) and
+                  'xml' in self.mimetype):
+                m = re.search("""<?xml.+encoding=["'](.+?)["'][^>]*\?>""",
                               self.content)
                 if m:
                     encoding = m.group(1)
@@ -485,30 +458,29 @@ def request(method, url, params=None, data=None, headers=None, cookies=None,
     """Initiate an HTTP(S) request. Returns :class:`Response` object.
 
     :param method: 'GET' or 'POST'
-    :type method: unicode
+    :type method: ``unicode``
     :param url: URL to open
-    :type url: unicode
+    :type url: ``unicode``
     :param params: mapping of URL parameters
-    :type params: dict
+    :type params: :class:`dict`
     :param data: mapping of form data ``{'field_name': 'value'}`` or
         :class:`str`
-    :type data: dict or str
+    :type data: :class:`dict` or :class:`str`
     :param headers: HTTP headers
-    :type headers: dict
+    :type headers: :class:`dict`
     :param cookies: cookies to send to server
-    :type cookies: dict
+    :type cookies: :class:`dict`
     :param files: files to upload (see below).
-    :type files: dict
+    :type files: :class:`dict`
     :param auth: username, password
-    :type auth: tuple
+    :type auth: ``tuple``
     :param timeout: connection timeout limit in seconds
-    :type timeout: int
+    :type timeout: ``int``
     :param allow_redirects: follow redirections
-    :type allow_redirects: bool
+    :type allow_redirects: ``Boolean``
     :param stream: Stream content instead of fetching it all at once.
-    :type stream: bool
-    :returns: Response object
-    :rtype: :class:`Response`
+    :type stream: ``bool``
+    :returns: :class:`Response` object
 
 
     The ``files`` argument is a dictionary::
@@ -560,6 +532,10 @@ def request(method, url, params=None, data=None, headers=None, cookies=None,
 
     headers['accept-encoding'] = ', '.join(encodings)
 
+    # Force POST by providing an empty data string
+    if method == 'POST' and not data:
+        data = ''
+
     if files:
         if not data:
             data = {}
@@ -587,7 +563,7 @@ def request(method, url, params=None, data=None, headers=None, cookies=None,
         query = urllib.urlencode(str_dict(params), doseq=True)
         url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
 
-    req = Request(url, data, headers, method=method)
+    req = urllib2.Request(url, data, headers)
     return Response(req, stream)
 
 
@@ -603,18 +579,6 @@ def get(url, params=None, headers=None, cookies=None, auth=None,
                    stream=stream)
 
 
-def delete(url, params=None, data=None, headers=None, cookies=None, auth=None,
-           timeout=60, allow_redirects=True, stream=False):
-    """Initiate a DELETE request. Arguments as for :func:`request`.
-
-    :returns: :class:`Response` instance
-
-    """
-    return request('DELETE', url, params, data, headers=headers,
-                   cookies=cookies, auth=auth, timeout=timeout,
-                   allow_redirects=allow_redirects, stream=stream)
-
-
 def post(url, params=None, data=None, headers=None, cookies=None, files=None,
          auth=None, timeout=60, allow_redirects=False, stream=False):
     """Initiate a POST request. Arguments as for :func:`request`.
@@ -626,27 +590,15 @@ def post(url, params=None, data=None, headers=None, cookies=None, files=None,
                    timeout, allow_redirects, stream)
 
 
-def put(url, params=None, data=None, headers=None, cookies=None, files=None,
-        auth=None, timeout=60, allow_redirects=False, stream=False):
-    """Initiate a PUT request. Arguments as for :func:`request`.
-
-    :returns: :class:`Response` instance
-
-    """
-    return request('PUT', url, params, data, headers, cookies, files, auth,
-                   timeout, allow_redirects, stream)
-
-
 def encode_multipart_formdata(fields, files):
     """Encode form data (``fields``) and ``files`` for POST request.
 
     :param fields: mapping of ``{name : value}`` pairs for normal form fields.
-    :type fields: dict
+    :type fields: :class:`dict`
     :param files: dictionary of fieldnames/files elements for file data.
                   See below for details.
-    :type files: dict of :class:`dict`
-    :returns: ``(headers, body)`` ``headers`` is a
-        :class:`dict` of HTTP headers
+    :type files: :class:`dict` of :class:`dicts`
+    :returns: ``(headers, body)`` ``headers`` is a :class:`dict` of HTTP headers
     :rtype: 2-tuple ``(dict, str)``
 
     The ``files`` argument is a dictionary::
@@ -657,20 +609,19 @@ def encode_multipart_formdata(fields, files):
         }
 
     - ``fieldname`` is the name of the field in the HTML form.
-    - ``mimetype`` is optional. If not provided, :mod:`mimetypes` will
-      be used to guess the mimetype, or ``application/octet-stream``
-      will be used.
+    - ``mimetype`` is optional. If not provided, :mod:`mimetypes` will be used to guess the mimetype, or ``application/octet-stream`` will be used.
 
     """
     def get_content_type(filename):
         """Return or guess mimetype of ``filename``.
 
         :param filename: filename of file
-        :type filename: unicode/str
+        :type filename: unicode/string
         :returns: mime-type, e.g. ``text/html``
-        :rtype: str
+        :rtype: :class::class:`str`
 
         """
+
         return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
     boundary = '-----' + ''.join(random.choice(BOUNDARY_CHARS)

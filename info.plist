@@ -4,8 +4,6 @@
 <dict>
 	<key>bundleid</key>
 	<string>org.jeef.workflowdirectory</string>
-	<key>category</key>
-	<string>Productivity</string>
 	<key>connections</key>
 	<dict>
 		<key>BF84CB60-A776-4978-93FE-3FD1512337D4</key>
